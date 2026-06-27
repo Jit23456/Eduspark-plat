@@ -40,6 +40,7 @@ export async function GET(req, { params }) {
   const routeParams = await params;
   const path = routeParams.route ? routeParams.route.join('/') : '';
   const user = verifyJwt(req);
+  const { searchParams } = new URL(req.url);
 
   try {
     // GET /api/auth/me
@@ -54,7 +55,13 @@ export async function GET(req, { params }) {
 
     // GET /api/courses
     if (path === 'courses') {
-      const courses = await supabaseFetch(`courses?select=*&order=class_number.asc,subject.asc`);
+      let query = 'courses?select=*';
+      const subject = searchParams.get('subject');
+      const classNumber = searchParams.get('class_number');
+      if (subject) query += `&subject=eq.${subject}`;
+      if (classNumber) query += `&class_number=eq.${classNumber}`;
+      query += '&order=class_number.asc,subject.asc';
+      const courses = await supabaseFetch(query);
       return NextResponse.json(courses || []);
     }
 
@@ -63,6 +70,13 @@ export async function GET(req, { params }) {
       const courseId = path.split('/')[1];
       const lessons = await supabaseFetch(`lessons?course_id=eq.${courseId}&select=id,course_id,title,order_index,day_number&order=order_index.asc`);
       return NextResponse.json(lessons || []);
+    }
+
+    // GET /api/courses/:id/exams
+    if (path.startsWith('courses/') && path.endsWith('/exams')) {
+      const courseId = path.split('/')[1];
+      const exams = await supabaseFetch(`exams?course_id=eq.${courseId}&select=*`);
+      return NextResponse.json(exams || []);
     }
 
     // GET /api/courses/:id
@@ -80,7 +94,6 @@ export async function GET(req, { params }) {
       if (!lessons || lessons.length === 0) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
       const lesson = lessons[0];
 
-      // Gating for student
       let isLocked = false;
       if (user && user.role === 'student') {
         const dbUsers = await supabaseFetch(`users?id=eq.${user.id}&select=has_paid`);
@@ -106,6 +119,19 @@ export async function GET(req, { params }) {
       return NextResponse.json({ ...lesson, locked: false });
     }
 
+    // GET /api/exams/:id/questions
+    if (path.startsWith('exams/') && path.endsWith('/questions')) {
+      const examId = path.split('/')[1];
+      const exams = await supabaseFetch(`exams?id=eq.${examId}&select=*`);
+      if (!exams || exams.length === 0) return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+      const questions = await supabaseFetch(`questions?exam_id=eq.${examId}&select=*`);
+      const parsedQuestions = (questions || []).map(q => ({
+        ...q,
+        options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+      }));
+      return NextResponse.json({ ...exams[0], questions: parsedQuestions });
+    }
+
     // GET /api/exams/:id
     if (path.startsWith('exams/')) {
       const examId = path.split('/')[1];
@@ -117,6 +143,20 @@ export async function GET(req, { params }) {
         options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
       }));
       return NextResponse.json({ ...exams[0], questions: parsedQuestions });
+    }
+
+    // GET /api/progress
+    if (path === 'progress') {
+      if (!user) return NextResponse.json([], { status: 200 });
+      const progress = await supabaseFetch(`progress?user_id=eq.${user.id}&select=*`);
+      return NextResponse.json(progress || []);
+    }
+
+    // GET /api/admin/students
+    if (path === 'admin/students') {
+      if (!user || user.role !== 'teacher') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const students = await supabaseFetch(`users?role=eq.student&select=*`);
+      return NextResponse.json(students || []);
     }
 
     return NextResponse.json({ error: 'Endpoint not found' }, { status: 404 });
@@ -172,6 +212,72 @@ export async function POST(req, { params }) {
 
       const token = jwt.sign(newUser, JWT_SECRET, { expiresIn: '7d' });
       return NextResponse.json({ token, user: newUser });
+    }
+
+    // POST /api/progress
+    if (path === 'progress') {
+      if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const { lessonId } = body;
+      await supabaseFetch('progress', {
+        method: 'POST',
+        headers: { 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ user_id: user.id, lesson_id: lessonId, completed_at: new Date().toISOString() })
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    // POST /api/exams/:id/submit
+    if (path.startsWith('exams/') && path.endsWith('/submit')) {
+      if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const examId = path.split('/')[1];
+      const { answers } = body;
+      const questions = await supabaseFetch(`questions?exam_id=eq.${examId}&select=*`);
+      let score = 0;
+      (questions || []).forEach(q => {
+        if (answers[q.id] !== undefined && Number(answers[q.id]) === q.correct_option) {
+          score++;
+        }
+      });
+      const submission = {
+        user_id: user.id,
+        exam_id: Number(examId),
+        score,
+        total_questions: (questions || []).length,
+        answers: JSON.stringify(answers),
+        submitted_at: new Date().toISOString()
+      };
+      await supabaseFetch('submissions', { method: 'POST', body: JSON.stringify(submission) });
+      return NextResponse.json({ score, totalQuestions: (questions || []).length, passed: score >= Math.ceil((questions || []).length / 2) });
+    }
+
+    // POST /api/admin/students/:userId/payment
+    if (path.startsWith('admin/students/') && path.endsWith('/payment')) {
+      if (!user || user.role !== 'teacher') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const targetUserId = path.split('/')[2];
+      const { hasPaid } = body;
+      await supabaseFetch(`users?id=eq.${targetUserId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ has_paid: hasPaid ? 1 : 0 })
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    // POST /api/courses/:id/lessons
+    if (path.startsWith('courses/') && path.endsWith('/lessons')) {
+      if (!user || user.role !== 'teacher') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const courseId = path.split('/')[1];
+      const { title, content, orderIndex, videoUrl, pdfUrl } = body;
+      const newLesson = {
+        course_id: Number(courseId),
+        title,
+        content,
+        order_index: orderIndex || 1,
+        video_url: videoUrl,
+        pdf_url: pdfUrl,
+        day_number: orderIndex || 1
+      };
+      const result = await supabaseFetch('lessons', { method: 'POST', body: JSON.stringify(newLesson) });
+      return NextResponse.json(result ? result[0] : newLesson);
     }
 
     // POST /api/payment/razorpay-order
