@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import Razorpay from 'razorpay';
 import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'eduspark_secret_key_12345';
@@ -282,24 +281,41 @@ export async function POST(req, { params }) {
 
     // POST /api/payment/razorpay-order
     if (path === 'payment/razorpay-order') {
-      const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_T6a0fiCRRVIfl8';
-      const keySecret = process.env.RAZORPAY_KEY_SECRET || 'qCMh5tFyxLE1ibP2TaA4VZHw';
-      const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
+      let keyId = (process.env.RAZORPAY_KEY_ID || 'rzp_test_T6a0fiCRRVIfl8').trim().replace(/^["']|["']$/g, '');
+      let keySecret = (process.env.RAZORPAY_KEY_SECRET || 'qCMh5tFyxLE1ibP2TaA4VZHw').trim().replace(/^["']|["']$/g, '');
+      
+      try {
+        const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+        const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            amount: Number(body.amount) || 299900,
+            currency: body.currency || 'INR',
+            receipt: `rcpt_${Date.now()}`
+          })
+        });
 
-      const order = await rzp.orders.create({
-        amount: body.amount || 299900,
-        currency: body.currency || 'INR',
-        receipt: `receipt_${Date.now()}`
-      });
+        const rzpData = await rzpRes.json();
+        if (!rzpRes.ok) {
+          return NextResponse.json({ error: rzpData.error?.description || 'Razorpay order creation failed' }, { status: rzpRes.status });
+        }
 
-      return NextResponse.json({ ...order, key_id: keyId });
+        return NextResponse.json({ ...rzpData, key_id: keyId });
+      } catch (rzpErr) {
+        console.error('Razorpay Order Error:', rzpErr);
+        return NextResponse.json({ error: rzpErr.message || 'Razorpay order creation failed' }, { status: 400 });
+      }
     }
 
     // POST /api/payment/razorpay-verify
     if (path === 'payment/razorpay-verify') {
       if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = body;
-      const keySecret = process.env.RAZORPAY_KEY_SECRET || 'qCMh5tFyxLE1ibP2TaA4VZHw';
+      const keySecret = (process.env.RAZORPAY_KEY_SECRET || 'qCMh5tFyxLE1ibP2TaA4VZHw').trim().replace(/^["']|["']$/g, '');
 
       const bodyData = razorpay_order_id + "|" + razorpay_payment_id;
       const expectedSignature = crypto.createHmac('sha256', keySecret).update(bodyData.toString()).digest('hex');
@@ -331,3 +347,4 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

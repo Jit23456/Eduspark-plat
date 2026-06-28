@@ -265,11 +265,10 @@ export default function Dashboard() {
         }
       });
 
-      if (!orderRes.ok) {
-        throw new Error('Failed to initiate transaction order.');
-      }
-
       const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        throw new Error(orderData.error || 'Failed to initiate transaction order.');
+      }
 
 
 
