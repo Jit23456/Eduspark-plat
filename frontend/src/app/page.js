@@ -229,24 +229,24 @@ export default function Home() {
       </header>
 
       {/* Hero Welcome Banner with Animated Particles & Visual Graphics */}
-      <section className="relative py-24 px-6 lg:px-12 overflow-hidden bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#0f172a]">
+      <section className="relative pt-32 sm:pt-36 pb-20 sm:pb-24 px-6 lg:px-12 overflow-hidden bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#0f172a]">
         {/* Decorative Background Glowing Lights */}
         <div className="absolute top-1/4 left-10 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl animate-pulseGlow pointer-events-none"></div>
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulseGlow pointer-events-none" style={{ animationDelay: '2s' }}></div>
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
           <div className="lg:col-span-7 space-y-8 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 text-xs text-blue-300 font-extrabold shadow-inner backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-full px-4 py-2 text-xs text-blue-300 font-extrabold shadow-inner backdrop-blur-md mt-2 sm:mt-0">
               <Sparkles className="h-4 w-4 text-yellow-400 animate-spinSlow" />
-              <span>Transforming Education for Class 1 to 10 Students & Teachers</span>
+              <span>Next-Gen Academic Platform for Class 1 to 10</span>
             </div>
             
-            <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-none text-white">
-              Empower Learning with <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-teal-300 to-purple-400">Interactive Graphics</span> & AI Support
+            <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-tight sm:leading-none text-white">
+              Unlock Academic Excellence with <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-teal-300 to-purple-400">Smart AI Guidance</span> & Visual Mastery
             </h1>
             
             <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed font-normal">
-              Explore 70 structured daily curriculum paths, rich TipTap lesson notes, HD videos, printable PDF worksheets, and instant performance analytics. Process payments securely via official Razorpay.
+              Empowering Class 1 to 10 students with 80 comprehensive subject tracks, interactive video lessons, printable PDF worksheets, instant chapter exams, and 24/7 AI Sparky assistance.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-2">
