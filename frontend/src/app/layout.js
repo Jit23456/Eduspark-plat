@@ -1,31 +1,32 @@
 'use client';
 
 import React from 'react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from '@/context/AuthContext';
-import AIAssistant from '@/components/AIAssistant';
+import { CartProvider } from '@/context/CartContext';
+import Nav from '@/components/Nav';
 import './globals.css';
 
 export default function RootLayout({ children }) {
-  // Use a default client ID for sandbox testing if none provided
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1056586029053-mockid12345example.apps.googleusercontent.com";
-
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <head>
-        <title>Eduspark Platform - Modern Class 1-10 Learning Portal</title>
-        <meta name="description" content="Next-Generation Educational Learning Platform for Students, Parents & Teachers" />
+        <title>Fraser Valley Chess Academy — Chess, Maths, English & More</title>
+        <meta name="description" content="Group and private classes across BC: Chess, Maths, English, Finance and Fine Arts. Tournaments, camps and free trials." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
-      <body className="antialiased min-h-screen bg-[#f8fafc] text-[#0f172a] selection:bg-blue-500 selection:text-white">
-        <GoogleOAuthProvider clientId={googleClientId}>
-          <AuthProvider>
-            {children}
-            <AIAssistant />
-          </AuthProvider>
-        </GoogleOAuthProvider>
+      <body className="antialiased min-h-screen">
+        <AuthProvider>
+          <CartProvider>
+            <Nav />
+            <main className="min-h-[calc(100vh-64px)]">{children}</main>
+            <footer className="border-t border-[var(--line)] mt-16 py-8 text-center text-sm text-[var(--ink-soft)]">
+              <div className="board-strip max-w-40 mx-auto mb-4" />
+              Fraser Valley Chess Academy · Chess · Maths · English · Finance · Fine Arts
+            </footer>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

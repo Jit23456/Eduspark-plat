@@ -1,75 +1,98 @@
-# Eduspark Platform
+# Fraser Valley Chess Academy — Platform
 
-Modern Class 1-10 learning portal for students, built with a Next.js frontend and an Express backend.
+Full-stack multi-tenant academy platform (Phase 1) built to the FVCA user-stories document:
+franchisor/franchisee ownerships, multi-location catalog, family accounts with member
+profiles, configurable discount engine, tokenized payments, loyalty & store credit,
+coach scheduling/roster/attendance, trials, and tournaments/camps with automatic
+Early Bird → Standard → Rush pricing.
 
-Live demo: https://eduspark-plat-8cq8.vercel.app/
+- **Frontend:** Next.js 16 (App Router) + Tailwind CSS 4 — `frontend/`
+- **Backend:** Node.js + Express + SQLite (better-sqlite3) — `backend/`
+- **Design doc:** `docs/fvca-technical-spec.md`
 
-## Features
-
-- Class 1-10 learning portal interface
-- Student dashboard and course pages
-- Exam pages and exam routing
-- Google OAuth support for login
-- Razorpay integration for payment flow
-- JWT-based authentication with a Node.js/Express backend
-
-## Tech Stack
-
-- Frontend: Next.js 16, React 19, Tailwind CSS, Lucide icons
-- Backend: Express, Node.js, dotenv, better-sqlite3
-- Integrations: Google OAuth, Razorpay
-- Deployment: Vercel
-
-## Repository Structure
-
-- `frontend/` - Next.js application
-- `backend/` - Express API server
-- `supabase_schema.sql` - Database schema reference
-- `vercel.json` - Vercel deployment configuration
-
-## Setup
-
-### Backend
-
-1. Open `backend/`
-2. Install dependencies:
+## Quick start
 
 ```bash
+# Terminal 1 — API (port 5000). First run seeds demo data automatically.
 cd backend
 npm install
-```
-
-3. Create a `.env` file with values required by `backend/server.js` and `backend/verify.js`.
-
-4. Start the backend:
-
-```bash
 npm run dev
-```
 
-### Frontend
-
-1. Open `frontend/`
-2. Install dependencies:
-
-```bash
+# Terminal 2 — web app (port 3000)
 cd frontend
 npm install
-```
-
-3. Start the Next.js app:
-
-```bash
 npm run dev
 ```
 
-4. Open the app in your browser at `http://localhost:3000`
+Open http://localhost:3000.
 
-## Notes
+### Demo accounts (password: `Password123!`)
 
-- Ensure the backend and frontend are configured with any required environment variables.
-- The project uses Vercel for deployment; the current live demo is hosted at the provided URL.
+| Email | Role |
+|---|---|
+| `parent@example.com` | Customer / parent (2 members, saved card) |
+| `coach@fvca.ca` | Coach (corporate) |
+| `admin@fvca.ca` | Franchisor admin |
+| `management@fvca.ca` | Franchisor management |
+| `surrey.admin@fvca.ca` | Franchisee admin |
+| `surrey.mgmt@fvca.ca` | Franchisee management |
 
-## License
+## What's implemented (Phase 1)
 
-This repository is shared under the standard open-source terms unless otherwise specified.
+**Customers** — registration with the two mandatory checkboxes (password fields appear
+after both are checked), multi-member family profiles incl. "register me as a member",
+nearest + accessible locations, optional card save (mandatory for recurring lessons),
+PII masking with SMS step-up 2FA to view/edit, dashboard (schedule, notifications,
+coach notes, trial assessments, invoices/receipts, loyalty, store credit),
+15-day cancellation notice, event registration with byes/play-up/CFC-ID surcharges.
+
+**Discount engine (configurable by franchisor)** — group frequency (2x → 25%, 3x → 35%),
+multi-planet (2 → 5% … 5 → 20%) applied after the frequency discount; private lessons get
+their own multi-session discount and never combine with group discounts. One-time $25
+member setup fee on first purchase. Live "you may like…" upsell hints in cart.
+
+**Coaches** — session list with pre-generated expected-attendance sheets, attendance
+marking (absences notify parents), per-session topic/homework notes, trial assessments
+with recommended batch (surfaced on the parent dashboard), 6-month availability that
+carries over, leaves.
+
+**Admins / Management** — planets → levels → courses → variants catalog, discount tiers
+and global config, ownership creation (management account emailed a temp password that
+must be reset on first login), locations, holiday calendars, staff accounts, offerings +
+weekly batches with live seat counts, 2-week roster generation honoring holidays /
+availability / leaves, customers view + store-credit grants, missed-payment report and
+retry-charge, price change requests (franchisee submits → franchisor management
+approves; approval applies the local price), IT/Non-IT tickets, revenue reports by
+ownership / location / planet / level / month, failed-registration (full slot) report,
+event templates + entries report with filters (missing CFC ID, byes, section, play-up)
+and inline CFC-ID assignment.
+
+**System actor** — hourly jobs (manual trigger from the admin console): expected
+attendance sheets, monthly recurring card charging with dunning notifications,
+loyalty accrual ($1 = 100 points, welcome bonus on signup, 10,000 pts = $1 redemption),
+15-day cancellation finalization. All automated actions are audit-logged as `SYSTEM`.
+
+**Payments** — mock tokenizing gateway stand-in for Stripe/Square: only gateway tokens +
+display metadata (brand/last4/expiry) are stored, never card numbers (SAQ-A posture).
+Use a card token containing `fail` to simulate declines.
+
+## API surface
+
+`/api/auth` (register, login, set-password, 2FA), `/api/public` (locations, planets,
+catalog, batches, discounts, events + public registration lists, trials),
+`/api/customer` (profile, members, cart quote/checkout, enrollments, invoices, cards,
+loyalty, event registration), `/api/coach`, `/api/admin`, `/api/events`,
+`/api/system/run-jobs`.
+
+## Configuration
+
+Backend env (`backend/.env`, see `.env.example`): `PORT` (default 5000), `JWT_SECRET`.
+Frontend env: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:5000/api` in dev).
+Business values (setup fee, refund fee, loyalty rates, welcome bonus, notice days) are
+editable at runtime in **Admin → Catalog & config**.
+
+## Deployment
+
+Deploy `frontend/` to Vercel with `NEXT_PUBLIC_API_URL` pointing at the hosted backend.
+The Express backend needs a persistent host (Render/Railway/Azure App Service — SQLite
+requires a persistent disk, or swap the `db.js` layer for Azure SQL per the spec).

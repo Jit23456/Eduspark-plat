@@ -2,41 +2,39 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const routes = require('./routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for frontend requests
-app.use(cors({
-  origin: '*', // Allow all origins for local dev environment
-  credentials: true
-}));
-
-// Body parser
+app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
-// Main API routes
-app.use('/api', routes);
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/public', require('./routes/public'));
+app.use('/api/customer', require('./routes/customer'));
+app.use('/api/coach', require('./routes/coach'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/events', require('./routes/events'));
 
-// Simple Health Check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date() });
+// System actor: manual trigger for demos ("run nightly jobs now")
+const systemJobs = require('./jobs/system');
+const { authenticate, requireAdmin } = require('./middleware/auth');
+app.post('/api/system/run-jobs', authenticate, requireAdmin, (req, res) => {
+  res.json(systemJobs.runAll({ force: !!req.body.force_billing }));
 });
 
-// Serve DB static assets or playground if needed (optional)
+app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'fvca-backend', time: new Date() }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
   console.error('Unhandled Server Error:', err);
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-// Start Server
 app.listen(PORT, () => {
-  console.log(`================================================`);
-  console.log(` Eduspark Backend Server running on port ${PORT} `);
-  console.log(` Health check: http://localhost:${PORT}/health  `);
-  console.log(`================================================`);
+  systemJobs.start();
+  console.log(`==================================================`);
+  console.log(` FVCA Platform API running on port ${PORT}`);
+  console.log(` Health check: http://localhost:${PORT}/health`);
+  console.log(`==================================================`);
 });
