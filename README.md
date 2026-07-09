@@ -1,19 +1,33 @@
-# Fraser Valley Chess Academy — Platform
+# Eduspark — Learning Platform for Classes 1–10
 
-Full-stack multi-tenant academy platform (Phase 1) built to the FVCA user-stories document:
-franchisor/franchisee ownerships, multi-location catalog, family accounts with member
-profiles, configurable discount engine, tokenized payments, loyalty & store credit,
-coach scheduling/roster/attendance, trials, and tournaments/camps with automatic
-Early Bird → Standard → Rush pricing.
+Full-stack education platform: **8 subjects** (Mathematics, Physics, Chemistry, Biology,
+Geography, History, Computer Science, English) × **Classes 1–10**, each course with an
+AI-teacher video lesson, structured curriculum, auto-graded chapter exams and live
+student progress — all aligned with the [BC curriculum](https://curriculum.gov.bc.ca/).
 
 - **Frontend:** Next.js 16 (App Router) + Tailwind CSS 4 — `frontend/`
-- **Backend:** Node.js + Express + SQLite (better-sqlite3) — `backend/`
-- **Design doc:** `docs/fvca-technical-spec.md`
+- **Backend:** Node.js + Express — `backend/`
+- **Database:** SQLite out of the box; set `SUPABASE_DB_URL` to run on Supabase Postgres
+- **Auth:** Email/password + Google Sign-In (Google Identity Services)
+- **Payments:** Razorpay (with a built-in demo checkout when no keys are configured)
+
+## Features
+
+- **Premium gating** — free accounts can browse the catalog and course outlines, but every
+  lesson, AI-teacher video and exam is locked until the student buys Premium (Razorpay).
+  One plan unlocks everything across all classes and subjects.
+- **AI teacher video** — every course has a ~1-minute animated teacher (hand gestures,
+  talking head) narrating the course intro with a humanised voice, referencing the BC
+  curriculum for that grade.
+- **Teacher Studio** — teachers create courses per subject + class, build the curriculum
+  (lessons), author MCQ exams, and track each student's lesson progress and exam scores.
+- **Student dashboard** — per-subject progress bars, lessons completed, exams taken and
+  average score for the student's class.
 
 ## Quick start
 
 ```bash
-# Terminal 1 — API (port 5000). First run seeds demo data automatically.
+# Terminal 1 — API (port 5000). First run creates + seeds the database automatically.
 cd backend
 npm install
 npm run dev
@@ -26,73 +40,30 @@ npm run dev
 
 Open http://localhost:3000.
 
-### Demo accounts (password: `Password123!`)
+## Demo accounts
 
-| Email | Role |
-|---|---|
-| `parent@example.com` | Customer / parent (2 members, saved card) |
-| `coach@fvca.ca` | Coach (corporate) |
-| `admin@fvca.ca` | Franchisor admin |
-| `management@fvca.ca` | Franchisor management |
-| `surrey.admin@fvca.ca` | Franchisee admin |
-| `surrey.mgmt@fvca.ca` | Franchisee management |
+| Role            | Email                 | Password    |
+| --------------- | --------------------- | ----------- |
+| Student (free)  | student@eduspark.com  | Student123! |
+| Student (premium) | premium@eduspark.com | Premium123! |
+| Teacher         | teacher@eduspark.com  | Teacher123! |
+| Admin           | admin@eduspark.com    | Admin123!   |
 
-## What's implemented (Phase 1)
+## Configuration (`backend/.env`, see `.env.example`)
 
-**Customers** — registration with the two mandatory checkboxes (password fields appear
-after both are checked), multi-member family profiles incl. "register me as a member",
-nearest + accessible locations, optional card save (mandatory for recurring lessons),
-PII masking with SMS step-up 2FA to view/edit, dashboard (schedule, notifications,
-coach notes, trial assessments, invoices/receipts, loyalty, store credit),
-15-day cancellation notice, event registration with byes/play-up/CFC-ID surcharges.
+| Variable | Purpose |
+| --- | --- |
+| `GOOGLE_CLIENT_ID` | Google Sign-In (same value goes in `frontend/.env.local` as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`) |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Real Razorpay checkout; leave empty for the demo checkout |
+| `SUPABASE_DB_URL` | Supabase Postgres connection string; leave empty for local SQLite. Schema also in `backend/supabase-schema.sql` |
+| `JWT_SECRET` | Token signing secret |
 
-**Discount engine (configurable by franchisor)** — group frequency (2x → 25%, 3x → 35%),
-multi-planet (2 → 5% … 5 → 20%) applied after the frequency discount; private lessons get
-their own multi-session discount and never combine with group discounts. One-time $25
-member setup fee on first purchase. Live "you may like…" upsell hints in cart.
+## API overview
 
-**Coaches** — session list with pre-generated expected-attendance sheets, attendance
-marking (absences notify parents), per-session topic/homework notes, trial assessments
-with recommended batch (surfaced on the parent dashboard), 6-month availability that
-carries over, leaves.
-
-**Admins / Management** — planets → levels → courses → variants catalog, discount tiers
-and global config, ownership creation (management account emailed a temp password that
-must be reset on first login), locations, holiday calendars, staff accounts, offerings +
-weekly batches with live seat counts, 2-week roster generation honoring holidays /
-availability / leaves, customers view + store-credit grants, missed-payment report and
-retry-charge, price change requests (franchisee submits → franchisor management
-approves; approval applies the local price), IT/Non-IT tickets, revenue reports by
-ownership / location / planet / level / month, failed-registration (full slot) report,
-event templates + entries report with filters (missing CFC ID, byes, section, play-up)
-and inline CFC-ID assignment.
-
-**System actor** — hourly jobs (manual trigger from the admin console): expected
-attendance sheets, monthly recurring card charging with dunning notifications,
-loyalty accrual ($1 = 100 points, welcome bonus on signup, 10,000 pts = $1 redemption),
-15-day cancellation finalization. All automated actions are audit-logged as `SYSTEM`.
-
-**Payments** — mock tokenizing gateway stand-in for Stripe/Square: only gateway tokens +
-display metadata (brand/last4/expiry) are stored, never card numbers (SAQ-A posture).
-Use a card token containing `fail` to simulate declines.
-
-## API surface
-
-`/api/auth` (register, login, set-password, 2FA), `/api/public` (locations, planets,
-catalog, batches, discounts, events + public registration lists, trials),
-`/api/customer` (profile, members, cart quote/checkout, enrollments, invoices, cards,
-loyalty, event registration), `/api/coach`, `/api/admin`, `/api/events`,
-`/api/system/run-jobs`.
-
-## Configuration
-
-Backend env (`backend/.env`, see `.env.example`): `PORT` (default 5000), `JWT_SECRET`.
-Frontend env: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:5000/api` in dev).
-Business values (setup fee, refund fee, loyalty rates, welcome bonus, notice days) are
-editable at runtime in **Admin → Catalog & config**.
-
-## Deployment
-
-Deploy `frontend/` to Vercel with `NEXT_PUBLIC_API_URL` pointing at the hosted backend.
-The Express backend needs a persistent host (Render/Railway/Azure App Service — SQLite
-requires a persistent disk, or swap the `db.js` layer for Azure SQL per the spec).
+- `POST /api/auth/register` · `POST /api/auth/login` · `POST /api/auth/google` · `GET /api/auth/me` · `PATCH /api/auth/profile`
+- `GET /api/catalog/subjects` · `GET /api/catalog/courses?subject=&class_level=`
+- `GET /api/courses/:id` (outline) · `GET /api/courses/:id/lessons/:lid` (premium) · `POST …/complete`
+- `GET /api/courses/exams/:eid/take` · `POST /api/courses/exams/:eid/submit` (premium, server-graded)
+- `GET /api/progress/me`
+- `POST /api/payments/create-order` · `POST /api/payments/verify` · `GET /api/payments/plans`
+- `GET /api/teacher/overview` + full CRUD for courses/lessons/exams/questions · `GET /api/teacher/courses/:id/students`

@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const api = useCallback(async (method, path, body, overrideToken) => {
-    const t = overrideToken !== undefined ? overrideToken : (typeof window !== 'undefined' ? localStorage.getItem('fvca_token') : null);
+    const t = overrideToken !== undefined ? overrideToken : (typeof window !== 'undefined' ? localStorage.getItem('eduspark_token') : null);
     const res = await fetch(`${API_URL}${path}`, {
       method,
       headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) },
@@ -25,17 +25,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem('fvca_token');
+    const stored = localStorage.getItem('eduspark_token');
     if (!stored) { setLoading(false); return; }
     setToken(stored);
     api('GET', '/auth/me', null, stored)
       .then(setUser)
-      .catch(() => { localStorage.removeItem('fvca_token'); setToken(null); })
+      .catch(() => { localStorage.removeItem('eduspark_token'); setToken(null); })
       .finally(() => setLoading(false));
   }, [api]);
 
   const adoptSession = (data) => {
-    localStorage.setItem('fvca_token', data.token);
+    localStorage.setItem('eduspark_token', data.token);
     setToken(data.token);
     setUser(data.user);
     return data.user;
@@ -43,10 +43,12 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => adoptSession(await api('POST', '/auth/login', { email, password }, null));
   const register = async (payload) => adoptSession(await api('POST', '/auth/register', payload, null));
-  const setPassword = async (new_password) => adoptSession(await api('POST', '/auth/set-password', { new_password }));
+  const googleLogin = async (credential, class_level) =>
+    adoptSession(await api('POST', '/auth/google', { credential, class_level }, null));
+  const updateProfile = async (payload) => adoptSession(await api('PATCH', '/auth/profile', payload));
 
   const logout = () => {
-    localStorage.removeItem('fvca_token');
+    localStorage.removeItem('eduspark_token');
     setToken(null);
     setUser(null);
   };
@@ -55,16 +57,13 @@ export function AuthProvider({ children }) {
     try { setUser(await api('GET', '/auth/me')); } catch { /* keep current */ }
   };
 
-  const isStaff = user && ['FRANCHISOR_MANAGEMENT', 'FRANCHISOR_ADMIN', 'FRANCHISEE_MANAGEMENT', 'FRANCHISEE_ADMIN', 'EVENT_MANAGER'].includes(user.role);
-  const isFranchisor = user && ['FRANCHISOR_MANAGEMENT', 'FRANCHISOR_ADMIN'].includes(user.role);
-  const isManagement = user && ['FRANCHISOR_MANAGEMENT', 'FRANCHISEE_MANAGEMENT'].includes(user.role);
-
   return (
     <AuthContext.Provider value={{
-      user, token, loading, api, login, register, setPassword, logout, refreshUser,
-      isStaff, isFranchisor, isManagement,
-      isCoach: user?.role === 'COACH',
-      isCustomer: user?.role === 'CUSTOMER',
+      user, token, loading, api,
+      login, register, googleLogin, updateProfile, logout, refreshUser,
+      isStudent: user?.role === 'STUDENT',
+      isTeacher: user?.role === 'TEACHER' || user?.role === 'ADMIN',
+      isPremium: !!user?.is_premium,
       apiUrl: API_URL,
     }}>
       {children}
@@ -76,7 +75,7 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-export const money = (cents, currency = 'CAD') =>
-  new Intl.NumberFormat('en-CA', { style: 'currency', currency }).format((cents || 0) / 100);
+export const rupees = (paise) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((paise || 0) / 100);
 
-export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const CLASSES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];

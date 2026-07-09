@@ -2,129 +2,166 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth, money } from '@/context/AuthContext';
-import { Sparkles, Trophy, CalendarDays, ArrowRight, Percent } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import SubjectIcon from '@/components/SubjectIcon';
+import {
+  Sparkles, Crown, PlayCircle, ClipboardCheck, TrendingUp, ShieldCheck,
+  GraduationCap, Video, BadgeCheck, ArrowRight, BookOpenCheck, Star,
+} from 'lucide-react';
 
-export default function Home() {
-  const { api } = useAuth();
-  const [planets, setPlanets] = useState([]);
-  const [discounts, setDiscounts] = useState([]);
-  const [events, setEvents] = useState([]);
+const STATS = [
+  { value: '8', label: 'Subjects' },
+  { value: '10', label: 'Classes' },
+  { value: '80+', label: 'Courses' },
+  { value: '400+', label: 'Lessons' },
+];
+
+const FEATURES = [
+  { icon: Video, title: 'AI Teacher Videos', text: 'A one-minute teacher-led video intro for every course — real humanised voice, expressive hand gestures, zero boredom.', color: 'var(--pink)' },
+  { icon: BookOpenCheck, title: 'BC Curriculum Aligned', text: 'Every course references the official British Columbia curriculum, grade by grade, subject by subject.', color: 'var(--cyan)' },
+  { icon: ClipboardCheck, title: 'Chapter Exams', text: 'Auto-graded MCQ exams after every course with instant answer review and score history.', color: 'var(--gold)' },
+  { icon: TrendingUp, title: 'Progress Tracking', text: 'Watch your lesson completion and exam scores grow on a beautiful live dashboard.', color: 'var(--green)' },
+  { icon: GraduationCap, title: 'Real Teachers', text: 'Teachers build the curriculum, add lessons and exams, and follow every student’s progress.', color: 'var(--violet)' },
+  { icon: ShieldCheck, title: 'Secure Payments', text: 'Premium unlock via Razorpay with bank-grade signature verification.', color: 'var(--red)' },
+];
+
+export default function LandingPage() {
+  const { api, user } = useAuth();
+  const [subjects, setSubjects] = useState([]);
 
   useEffect(() => {
-    api('GET', '/public/planets', null, null).then(setPlanets).catch(() => {});
-    api('GET', '/public/discounts', null, null).then(setDiscounts).catch(() => {});
-    api('GET', '/public/events', null, null).then(setEvents).catch(() => {});
+    api('GET', '/catalog/subjects', null, null).then(setSubjects).catch(() => {});
   }, [api]);
-
-  const freq = discounts.filter(d => d.rule_type === 'GROUP_FREQUENCY');
-  const multi = discounts.filter(d => d.rule_type === 'MULTI_PLANET');
 
   return (
     <div>
-      {/* Hero */}
-      <section className="bg-[var(--navy)] text-white">
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
-          <div className="animate-slideUp">
-            <span className="badge badge-gold mb-4">Now enrolling · Fall 2026</span>
-            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight tracking-tight">
-              Every child a strategist.<br />
-              <span className="text-[var(--gold)]">Chess, Maths & beyond.</span>
-            </h1>
-            <p className="mt-4 text-white/75 text-lg max-w-xl">
-              Group and private classes across the Fraser Valley — five learning planets,
-              CFC-rated tournaments, camps, and coaches who care. Stack subjects and
-              frequencies for deep discounts.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/trial" className="btn btn-gold text-base px-6 py-3">Book a free trial</Link>
-              <Link href="/courses" className="btn bg-white/10 text-white hover:bg-white/20 border-0 text-base px-6 py-3">
-                Browse courses <ArrowRight size={16} />
-              </Link>
-            </div>
-          </div>
-          <div className="hidden md:flex justify-center text-[180px] leading-none select-none opacity-90">
-            ♞
-          </div>
+      {/* ------------------------------- Hero ------------------------------- */}
+      <section className="max-w-7xl mx-auto px-4 pt-20 pb-16 text-center relative">
+        {/* floating subject chips */}
+        <div className="hidden lg:block absolute left-8 top-24 animate-float">
+          <div className="glass px-4 py-3 flex items-center gap-2 text-sm font-bold"><span style={{ color: '#6366f1' }}>∑</span> Mathematics</div>
         </div>
-        <div className="board-strip" />
-      </section>
+        <div className="hidden lg:block absolute right-10 top-36 animate-float-slow">
+          <div className="glass px-4 py-3 flex items-center gap-2 text-sm font-bold"><span style={{ color: '#22d3ee' }}>⚛</span> Physics</div>
+        </div>
+        <div className="hidden lg:block absolute left-24 bottom-10 animate-float-slow">
+          <div className="glass px-4 py-3 flex items-center gap-2 text-sm font-bold"><span style={{ color: '#ec4899' }}>✎</span> English</div>
+        </div>
+        <div className="hidden lg:block absolute right-24 bottom-24 animate-float">
+          <div className="glass px-4 py-3 flex items-center gap-2 text-sm font-bold"><span style={{ color: '#8b5cf6' }}>{'</>'}</span> Coding</div>
+        </div>
 
-      {/* Discounts banner */}
-      <section className="max-w-7xl mx-auto px-4 -mt-8">
-        <div className="card p-6 md:p-8 grid md:grid-cols-3 gap-6">
-          <div className="flex gap-3">
-            <Percent className="text-[var(--gold)] shrink-0" />
-            <div>
-              <div className="font-bold">Frequency discounts</div>
-              <p className="text-sm text-[var(--ink-soft)]">
-                {freq.map(f => `${f.threshold_count}x weekly: ${f.percent}% off`).join(' · ') || 'Attend twice or thrice weekly and save.'}
-              </p>
+        <div className="animate-fadeUp inline-flex items-center gap-2 badge badge-violet mb-6 !text-xs !px-4 !py-1.5">
+          <Sparkles size={13} /> Classes 1–10 · Aligned with the BC Curriculum
+        </div>
+        <h1 className="animate-fadeUp d1 text-4xl sm:text-6xl font-black leading-tight tracking-tight">
+          Every subject. Every class.<br />
+          <span className="grad-text">One spark of genius.</span>
+        </h1>
+        <p className="animate-fadeUp d2 max-w-2xl mx-auto mt-6 text-lg text-[var(--ink-soft)]">
+          Math, Physics, Chemistry, Biology, Geography, History, Computer Science and English —
+          taught with AI teacher videos, real exams and live progress tracking, for every student from Class 1 to 10.
+        </p>
+        <div className="animate-fadeUp d3 flex flex-wrap justify-center gap-3 mt-9">
+          {user ? (
+            <Link href={user.role === 'STUDENT' ? '/dashboard' : '/teacher'} className="btn btn-primary !px-7 !py-3 !text-base">
+              Go to my {user.role === 'STUDENT' ? 'dashboard' : 'studio'} <ArrowRight size={17} />
+            </Link>
+          ) : (
+            <>
+              <Link href="/register" className="btn btn-primary !px-7 !py-3 !text-base">Start learning free <ArrowRight size={17} /></Link>
+              <Link href="/premium" className="btn btn-gold !px-7 !py-3 !text-base"><Crown size={17} /> Go Premium</Link>
+            </>
+          )}
+        </div>
+
+        {/* stats */}
+        <div className="animate-fadeUp d4 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mt-16">
+          {STATS.map(s => (
+            <div key={s.label} className="glass glass-hover py-5">
+              <div className="text-3xl font-black grad-text">{s.value}</div>
+              <div className="text-xs font-bold text-[var(--ink-soft)] uppercase tracking-widest mt-1">{s.label}</div>
             </div>
-          </div>
-          <div className="flex gap-3">
-            <Sparkles className="text-[var(--gold)] shrink-0" />
-            <div>
-              <div className="font-bold">Multi-planet discounts</div>
-              <p className="text-sm text-[var(--ink-soft)]">
-                {multi.map(m => `${m.threshold_count} subjects: ${m.percent}%`).join(' · ') || 'Combine subjects for deeper discounts.'}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Trophy className="text-[var(--gold)] shrink-0" />
-            <div>
-              <div className="font-bold">Loyalty rewards</div>
-              <p className="text-sm text-[var(--ink-soft)]">Welcome bonus on signup, points on every dollar, redeemable as store credit.</p>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Planets */}
-      <section className="max-w-7xl mx-auto px-4 mt-16">
-        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Explore our learning planets</h2>
-        <p className="text-[var(--ink-soft)] mt-1">Each planet has levels matched to age and skill — pick one, or stack several and save.</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
-          {planets.map(p => (
-            <Link key={p.id} href="/courses" className="card p-5 hover:border-[var(--gold)] hover:-translate-y-1 transition-all">
-              <div className="text-3xl">{p.icon}</div>
-              <div className="font-bold mt-3">{p.name}</div>
-              <p className="text-xs text-[var(--ink-soft)] mt-1 line-clamp-3">{p.description}</p>
-              <div className="text-xs text-[var(--gold)] font-semibold mt-3">{p.levels.length} levels →</div>
+      {/* ----------------------------- Subjects ----------------------------- */}
+      <section className="max-w-7xl mx-auto px-4 py-16">
+        <div className="text-center mb-10 animate-fadeUp">
+          <h2 className="text-3xl font-extrabold">Explore all <span className="grad-text">8 subjects</span></h2>
+          <p className="text-[var(--ink-soft)] mt-2">A complete course for every subject in every class, 1 through 10.</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {subjects.map((s, i) => (
+            <Link key={s.id} href={`/courses?subject=${s.slug}`}
+              className={`glass glass-hover p-6 group animate-fadeUp d${(i % 8) + 1}`}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 group-hover:rotate-3"
+                style={{ background: `${s.color}22`, boxShadow: `0 0 24px ${s.color}33` }}>
+                <SubjectIcon icon={s.icon} color={s.color} size={24} />
+              </div>
+              <div className="font-extrabold">{s.name}</div>
+              <div className="text-xs text-[var(--ink-soft)] mt-1.5 leading-relaxed">{s.description}</div>
+              <div className="badge badge-cyan mt-3">{s.course_count} courses</div>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* Events */}
-      <section className="max-w-7xl mx-auto px-4 mt-16 mb-8">
-        <div className="flex items-end justify-between">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Tournaments & camps</h2>
-            <p className="text-[var(--ink-soft)] mt-1">Early-bird pricing switches automatically — register early and save.</p>
-          </div>
-          <Link href="/events" className="btn btn-ghost btn-sm">All events</Link>
+      {/* ----------------------------- Features ----------------------------- */}
+      <section className="max-w-7xl mx-auto px-4 py-16">
+        <div className="text-center mb-10 animate-fadeUp">
+          <h2 className="text-3xl font-extrabold">Built to feel <span className="grad-text">premium</span></h2>
+          <p className="text-[var(--ink-soft)] mt-2">Everything a modern classroom has — and a few things it doesn&apos;t.</p>
         </div>
-        <div className="grid md:grid-cols-2 gap-4 mt-6">
-          {events.slice(0, 4).map(e => (
-            <Link key={e.id} href={`/events/${e.id}`} className="card p-5 flex gap-4 hover:border-[var(--gold)] transition-all">
-              <div className="w-14 h-14 rounded-xl bg-[var(--navy)] text-white flex items-center justify-center text-2xl shrink-0">
-                {e.event_type === 'TOURNAMENT' ? '♜' : '☀'}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="badge badge-navy">{e.event_type}</span>
-                  {e.current_phase && <span className="badge badge-gold">{e.current_phase.phase_type.replace('_', ' ')} · {money(e.current_phase.price_cents)}</span>}
-                </div>
-                <div className="font-bold mt-1 truncate">{e.name}</div>
-                <div className="text-sm text-[var(--ink-soft)] flex items-center gap-1 mt-1">
-                  <CalendarDays size={14} /> {e.start_date} · {e.location_name || 'TBA'} · {e.registration_count} registered
-                </div>
-              </div>
-            </Link>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {FEATURES.map((f, i) => (
+            <div key={f.title} className={`glass glass-hover p-6 animate-fadeUp d${(i % 6) + 1}`}>
+              <f.icon size={26} style={{ color: f.color }} className="mb-4" />
+              <div className="font-extrabold">{f.title}</div>
+              <div className="text-sm text-[var(--ink-soft)] mt-1.5 leading-relaxed">{f.text}</div>
+            </div>
           ))}
-          {events.length === 0 && <div className="text-sm text-[var(--ink-soft)]">No upcoming events yet — check back soon.</div>}
+        </div>
+      </section>
+
+      {/* ------------------------------- How ------------------------------- */}
+      <section className="max-w-5xl mx-auto px-4 py-16">
+        <div className="glass p-8 sm:p-12 relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-px shimmer-line" />
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-extrabold">How Eduspark works</h2>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-8 text-center">
+            {[
+              { n: '1', icon: GraduationCap, t: 'Pick your class', d: 'Sign up free with Google or email and choose Class 1–10.' },
+              { n: '2', icon: Crown, t: 'Unlock Premium', d: 'One plan unlocks every course, every subject, every class — via Razorpay.' },
+              { n: '3', icon: PlayCircle, t: 'Learn & conquer', d: 'Watch the AI teacher, finish lessons, ace exams, track progress.' },
+            ].map(step => (
+              <div key={step.n}>
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-[var(--violet)] to-[var(--cyan)] flex items-center justify-center mb-4 animate-glow">
+                  <step.icon className="text-white" size={24} />
+                </div>
+                <div className="font-extrabold text-lg">{step.t}</div>
+                <div className="text-sm text-[var(--ink-soft)] mt-1.5">{step.d}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* -------------------------------- CTA ------------------------------- */}
+      <section className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <div className="animate-fadeUp">
+          <div className="flex justify-center gap-1 mb-4">
+            {[...Array(5)].map((_, i) => <Star key={i} size={20} className="text-[var(--gold)] fill-[var(--gold)]" />)}
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-black">Ready to spark your <span className="grad-text">best year yet?</span></h2>
+          <p className="text-[var(--ink-soft)] mt-3">Free to join. Premium unlocks everything.</p>
+          <div className="flex flex-wrap justify-center gap-3 mt-8">
+            <Link href="/register" className="btn btn-primary !px-8 !py-3 !text-base"><BadgeCheck size={18} /> Create free account</Link>
+            <Link href="/courses" className="btn btn-ghost !px-8 !py-3 !text-base">Browse courses</Link>
+          </div>
         </div>
       </section>
     </div>

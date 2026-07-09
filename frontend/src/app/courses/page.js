@@ -1,208 +1,115 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth, money, DAYS } from '@/context/AuthContext';
-import { useCart } from '@/context/CartContext';
-import { Users, Clock, Check } from 'lucide-react';
+import { useEffect, useState, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useAuth, CLASSES } from '@/context/AuthContext';
+import SubjectIcon from '@/components/SubjectIcon';
+import { Lock, Unlock, PlayCircle, ClipboardCheck, Crown } from 'lucide-react';
 
-export default function CoursesPage() {
-  const { api } = useAuth();
-  const { items, addItem } = useCart();
-  const router = useRouter();
-
-  const [locations, setLocations] = useState([]);
-  const [locationId, setLocationId] = useState('');
-  const [catalog, setCatalog] = useState([]);
-  const [discounts, setDiscounts] = useState([]);
-  const [planetId, setPlanetId] = useState('');
-  const [levelId, setLevelId] = useState('');
-  const [variant, setVariant] = useState(null);   // selected offering variant
-  const [batches, setBatches] = useState([]);
-  const [pickedBatches, setPickedBatches] = useState([]);
+function CoursesInner() {
+  const { api, user } = useAuth();
+  const params = useSearchParams();
+  const [subjects, setSubjects] = useState([]);
+  const [subject, setSubject] = useState(params.get('subject') || '');
+  const [classLevel, setClassLevel] = useState(params.get('class') || (user?.class_level ? String(user.class_level) : ''));
+  const [data, setData] = useState(null);
 
   useEffect(() => {
-    api('GET', '/public/locations', null, null).then(ls => {
-      setLocations(ls);
-      if (ls.length && !locationId) setLocationId(ls[0].id);
-    }).catch(() => {});
-    api('GET', '/public/discounts', null, null).then(setDiscounts).catch(() => {});
-  }, [api]); // eslint-disable-line react-hooks/exhaustive-deps
+    api('GET', '/catalog/subjects', null, null).then(setSubjects).catch(() => {});
+  }, [api]);
+
+  // Default the class filter to the student's own class once known.
+  useEffect(() => {
+    if (user?.class_level && !params.get('class')) setClassLevel(String(user.class_level));
+  }, [user, params]);
 
   useEffect(() => {
-    if (!locationId) return;
-    setPlanetId(''); setLevelId(''); setVariant(null); setPickedBatches([]);
-    api('GET', `/public/catalog?location_id=${locationId}`, null, null).then(setCatalog).catch(() => {});
-  }, [api, locationId]);
-
-  useEffect(() => {
-    if (!variant) { setBatches([]); setPickedBatches([]); return; }
-    setPickedBatches([]);
-    api('GET', `/public/batches?offering_id=${variant.offering_id}`, null, null).then(setBatches).catch(() => {});
-  }, [api, variant]);
-
-  const planet = catalog.find(p => p.planet_id === planetId);
-  const level = planet?.levels.find(l => l.level_id === levelId);
-
-  const multiTiers = discounts.filter(d => d.rule_type === 'MULTI_PLANET');
-  const cartPlanets = useMemo(() => new Set(items.filter(i => i.class_setting === 'GROUP').map(i => i.planet_name)), [items]);
-  const nextTier = multiTiers.find(t => t.threshold_count === cartPlanets.size + 1);
-
-  const needed = variant?.class_setting === 'GROUP' ? variant.sessions_per_week : 1;
-  const canAdd = variant && pickedBatches.length === (variant.class_setting === 'GROUP' ? needed : Math.min(needed, batches.length || 0));
-
-  const addToCart = () => {
-    addItem({
-      offering_id: variant.offering_id,
-      batch_ids: pickedBatches,
-      planet_name: planet.name, level_name: level.name,
-      class_setting: variant.class_setting, sessions_per_week: variant.sessions_per_week,
-      price_cents: variant.price_cents,
-      location_name: locations.find(l => l.id === locationId)?.name,
-      batch_labels: batches.filter(b => pickedBatches.includes(b.id)).map(b => `${DAYS[b.day_of_week]} ${b.start_time}`),
-    });
-    setVariant(null); setPickedBatches([]);
-  };
+    const q = new URLSearchParams();
+    if (subject) q.set('subject', subject);
+    if (classLevel) q.set('class_level', classLevel);
+    api('GET', `/catalog/courses?${q}`).then(setData).catch(() => {});
+  }, [api, subject, classLevel]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-extrabold tracking-tight">Browse courses</h1>
-      <p className="text-[var(--ink-soft)] mt-1">
-        Step 1 pick a location · Step 2 pick a planet & level · Step 3 pick frequency and weekly schedule.
-      </p>
+      <div className="mb-8 animate-fadeUp">
+        <h1 className="text-3xl font-extrabold">Course <span className="grad-text">catalog</span></h1>
+        <p className="text-[var(--ink-soft)] mt-1">Every subject, every class — pick where you want to shine.</p>
+      </div>
 
-      {/* Deep-discount marketing strip */}
-      <div className="card mt-4 p-4 text-sm flex flex-wrap gap-x-6 gap-y-1">
-        <span className="font-bold text-[var(--gold)]">💡 Deep discounts:</span>
-        {discounts.filter(d => d.rule_type === 'GROUP_FREQUENCY').map(d => (
-          <span key={'f' + d.threshold_count}>{d.threshold_count}x weekly → <b>{d.percent}% off</b></span>
+      {/* Subject filter */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 animate-fadeUp d1">
+        <button onClick={() => setSubject('')} className={`tab shrink-0 ${!subject ? 'tab-active' : 'border border-[var(--line)]'}`}>All subjects</button>
+        {subjects.map(s => (
+          <button key={s.slug} onClick={() => setSubject(s.slug)}
+            className={`tab shrink-0 flex items-center gap-2 ${subject === s.slug ? 'tab-active' : 'border border-[var(--line)]'}`}>
+            <SubjectIcon icon={s.icon} color={s.color} size={15} /> {s.name}
+          </button>
         ))}
-        {multiTiers.map(d => (
-          <span key={'m' + d.threshold_count}>{d.threshold_count} planets → <b>{d.percent}% off</b></span>
+      </div>
+
+      {/* Class filter */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-8 animate-fadeUp d2">
+        <button onClick={() => setClassLevel('')} className={`tab shrink-0 ${!classLevel ? 'tab-active' : 'border border-[var(--line)]'}`}>All classes</button>
+        {CLASSES.map(c => (
+          <button key={c} onClick={() => setClassLevel(String(c))}
+            className={`tab shrink-0 ${classLevel === String(c) ? 'tab-active' : 'border border-[var(--line)]'}`}>
+            Class {c}
+          </button>
         ))}
       </div>
 
-      {/* Step 1: location */}
-      <div className="mt-6">
-        <label className="label">Location</label>
-        <div className="flex flex-wrap gap-2">
-          {locations.map(l => (
-            <button key={l.id} onClick={() => setLocationId(l.id)}
-              className={`btn ${locationId === l.id ? 'btn-primary' : 'btn-ghost'}`}>
-              {l.name} <span className="text-xs opacity-70">({l.city})</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Step 2: planet */}
-      <div className="mt-6">
-        <label className="label">Planet</label>
-        <div className="flex flex-wrap gap-2">
-          {catalog.map(p => (
-            <button key={p.planet_id} onClick={() => { setPlanetId(p.planet_id); setLevelId(''); setVariant(null); }}
-              className={`btn ${planetId === p.planet_id ? 'btn-primary' : 'btn-ghost'}`}>
-              <span>{p.icon}</span> {p.name}
-              {cartPlanets.has(p.name) && <Check size={14} className="text-[var(--gold)]" />}
-            </button>
-          ))}
-        </div>
-        {nextTier && cartPlanets.size > 0 && (
-          <div className="mt-2 text-sm text-[var(--green)] font-semibold">
-            You may like: add a {cartPlanets.size + 1}
-            {['st', 'nd', 'rd'][cartPlanets.size] || 'th'} planet to unlock {nextTier.percent}% off all group classes!
-          </div>
-        )}
-      </div>
-
-      {/* Levels */}
-      {planet && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-          {planet.levels.map(l => (
-            <div key={l.level_id}
-              className={`card p-5 cursor-pointer transition-all ${levelId === l.level_id ? 'border-[var(--gold)] ring-2 ring-[var(--gold-soft)]' : 'hover:border-[var(--gold)]'}`}
-              onClick={() => { setLevelId(l.level_id); setVariant(null); }}>
-              <div className="flex items-center justify-between">
-                <div className="font-bold">{l.name}</div>
-                <span className="badge"><Clock size={11} /> {l.session_minutes} min</span>
-              </div>
-              <p className="text-sm text-[var(--ink-soft)] mt-2">{l.overview}</p>
-              <div className="text-sm mt-3 font-semibold text-[var(--navy)]">
-                From {money(Math.min(...l.variants.map(v => v.price_cents)))} / month
-              </div>
-            </div>
-          ))}
+      {!user && (
+        <div className="glass p-4 mb-6 text-sm text-[var(--ink-soft)] animate-fadeUp d2">
+          <Link href="/login" className="text-[var(--cyan)] font-bold hover:underline">Sign in</Link> to open courses.
+          Premium members unlock every lesson, video and exam.
         </div>
       )}
 
-      {/* Step 3: variant (setting + frequency) */}
-      {level && (
-        <div className="card p-6 mt-6 animate-slideUp">
-          <h3 className="font-extrabold text-lg">{planet.name} · {level.name} — choose class setting & frequency</h3>
-          <div className="grid sm:grid-cols-2 gap-6 mt-4">
-            {['GROUP', 'PRIVATE'].map(setting => (
-              <div key={setting}>
-                <div className="label">{setting === 'GROUP' ? 'Group classes' : 'Private 1-on-1'}</div>
-                <div className="space-y-2">
-                  {level.variants.filter(v => v.class_setting === setting).map(v => (
-                    <button key={v.variant_id} onClick={() => setVariant(v)}
-                      className={`w-full flex items-center justify-between rounded-xl border p-3 text-sm transition
-                        ${variant?.variant_id === v.variant_id ? 'border-[var(--gold)] bg-[var(--gold-soft)]' : 'border-[var(--line)] hover:border-[var(--gold)]'}`}>
-                      <span className="font-semibold">{v.sessions_per_week}x per week</span>
-                      <span>{money(v.price_cents)} / mo <span className="text-xs text-[var(--ink-soft)]">before discounts</span></span>
-                    </button>
-                  ))}
-                </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {(data?.courses || []).map((c, i) => (
+          <Link key={c.id} href={user ? `/courses/${c.id}` : '/login'}
+            className={`glass glass-hover p-6 group relative overflow-hidden animate-fadeUp d${(i % 6) + 1}`}>
+            <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${c.subject_color}, transparent)` }} />
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+                style={{ background: `${c.subject_color}22`, boxShadow: `0 0 20px ${c.subject_color}2a` }}>
+                <SubjectIcon icon={c.subject_icon} color={c.subject_color} size={24} />
               </div>
-            ))}
-          </div>
-          <p className="text-xs text-[var(--ink-soft)] mt-3">
-            Group and private discounts cannot be combined. Private classes get their own multi-session discount.
-          </p>
-
-          {/* Schedule slots */}
-          {variant && (
-            <div className="mt-5">
-              <div className="label">
-                {variant.class_setting === 'GROUP'
-                  ? `Pick ${needed} weekly slot${needed > 1 ? 's' : ''} (seats remaining shown)`
-                  : 'Private schedule is arranged with your coach after checkout'}
-              </div>
-              {variant.class_setting === 'GROUP' && (
-                <div className="flex flex-wrap gap-2">
-                  {batches.map(b => (
-                    <button key={b.id}
-                      onClick={() => setPickedBatches(p => p.includes(b.id) ? p.filter(x => x !== b.id) : (p.length < needed ? [...p, b.id] : p))}
-                      disabled={b.seats_left <= 0 && !pickedBatches.includes(b.id)}
-                      className={`btn btn-sm ${pickedBatches.includes(b.id) ? 'btn-gold' : 'btn-ghost'} ${b.seats_left <= 0 ? 'opacity-40' : ''}`}>
-                      {DAYS[b.day_of_week]} {b.start_time}
-                      <span className="badge ml-1"><Users size={10} /> {Math.max(0, b.seats_left)} left</span>
-                    </button>
-                  ))}
-                  {batches.length === 0 && <span className="text-sm text-[var(--ink-soft)]">No schedule published yet for this variant.</span>}
-                </div>
-              )}
-              <button className="btn btn-primary mt-4"
-                disabled={variant.class_setting === 'GROUP' ? pickedBatches.length !== needed : false}
-                onClick={addToCart}>
-                Add to cart
-              </button>
+              {c.locked
+                ? <span className="badge badge-gold"><Lock size={11} /> Premium</span>
+                : <span className="badge badge-green"><Unlock size={11} /> Unlocked</span>}
             </div>
-          )}
-        </div>
+            <div className="badge badge-violet mb-2">Class {c.class_level}</div>
+            <div className="font-extrabold text-lg leading-snug">{c.title}</div>
+            <p className="text-sm text-[var(--ink-soft)] mt-2 line-clamp-2">{c.description}</p>
+            <div className="flex items-center gap-4 mt-4 text-xs font-bold text-[var(--ink-soft)]">
+              <span className="flex items-center gap-1.5"><PlayCircle size={14} className="text-[var(--cyan)]" /> {c.lesson_count} lessons</span>
+              <span className="flex items-center gap-1.5"><ClipboardCheck size={14} className="text-[var(--violet)]" /> {c.exam_count} exam{c.exam_count === 1 ? '' : 's'}</span>
+              <span className="ml-auto">by {c.teacher_name}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {data && !data.courses.length && (
+        <div className="glass p-10 text-center text-[var(--ink-soft)]">No courses match these filters yet.</div>
       )}
 
-      {/* Cart summary */}
-      {items.length > 0 && (
-        <div className="fixed bottom-4 right-4 card p-4 shadow-xl w-80 z-30">
-          <div className="font-bold text-sm">Cart — {items.length} course{items.length > 1 ? 's' : ''}</div>
-          <ul className="text-xs text-[var(--ink-soft)] mt-1 space-y-0.5">
-            {items.map(i => <li key={i.offering_id}>• {i.planet_name} {i.level_name} ({i.class_setting} {i.sessions_per_week}x)</li>)}
-          </ul>
-          {nextTier && <div className="text-xs text-[var(--green)] font-semibold mt-2">Add 1 more planet → {nextTier.percent}% off!</div>}
-          <button className="btn btn-gold w-full mt-3" onClick={() => router.push('/checkout')}>Review & checkout</button>
+      {data && !data.premium && user && (
+        <div className="text-center mt-10">
+          <Link href="/premium" className="btn btn-gold !px-8 !py-3"><Crown size={17} /> Unlock everything with Premium</Link>
         </div>
       )}
     </div>
+  );
+}
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={<div className="max-w-7xl mx-auto px-4 py-16 text-[var(--ink-soft)]">Loading…</div>}>
+      <CoursesInner />
+    </Suspense>
   );
 }
