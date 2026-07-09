@@ -28,3 +28,7 @@ yarn-error.log*
 Thumbs.db
 
 .vercel
+
+# SQLite sidecar files
+*.db-wal
+*.db-shm
