@@ -24,6 +24,7 @@ app.post('/api/system/run-jobs', authenticate, requireAdmin, (req, res) => {
 });
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'fvca-backend', time: new Date() }));
+app.get('/', (_req, res) => res.json({ service: 'fvca-backend', docs: '/health' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use((err, _req, res, _next) => {
@@ -31,10 +32,16 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-app.listen(PORT, () => {
-  systemJobs.start();
-  console.log(`==================================================`);
-  console.log(` FVCA Platform API running on port ${PORT}`);
-  console.log(` Health check: http://localhost:${PORT}/health`);
-  console.log(`==================================================`);
-});
+// On Vercel the app is exported as a serverless handler (see api/index.js);
+// the interval-based system jobs only run on a long-lived host.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    systemJobs.start();
+    console.log(`==================================================`);
+    console.log(` FVCA Platform API running on port ${PORT}`);
+    console.log(` Health check: http://localhost:${PORT}/health`);
+    console.log(`==================================================`);
+  });
+}
+
+module.exports = app;

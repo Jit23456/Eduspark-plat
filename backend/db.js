@@ -2,7 +2,11 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
 
-const dbPath = path.join(__dirname, 'fvca.db');
+// Serverless (Vercel) filesystems are read-only except /tmp: the demo DB lives
+// there and reseeds on cold starts. Use a persistent host for durable data.
+const dbPath = process.env.VERCEL
+  ? path.join('/tmp', 'fvca.db')
+  : path.join(__dirname, 'fvca.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
